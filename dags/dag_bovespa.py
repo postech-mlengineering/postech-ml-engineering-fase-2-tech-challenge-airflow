@@ -3,8 +3,7 @@ import pendulum
 from datetime import timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from scripts.bovespa import extract_bovespa, upload_to_s3
-
+from scripts.utils_bovespa import extract_bovespa, upload_to_s3
 
 default_args = {
     'owner': 'airflow',

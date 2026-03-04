@@ -15,7 +15,7 @@ import boto3
 logger = logging.getLogger("airflow.task")
 
 
-def upload_to_s3(
+def extract_bovespa(
         dest_folder_path: str,
         process_date: str
     ) -> None:
