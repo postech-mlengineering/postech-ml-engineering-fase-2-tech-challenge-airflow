@@ -5,6 +5,7 @@ from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 from scripts.utils_bovespa import extract_bovespa, upload_to_s3
 
+
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
@@ -25,13 +26,13 @@ with DAG(
     AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
     AWS_REGION = os.getenv('AWS_REGION')
 
-    DEST_LOCAL_FOLDER_PATH = '/home/platero/postech-ml-engineering-fase-2-tech-challenge-airflow/data'
+    DEST_LOCAL_FOLDER_PATH = 'data'
 
     DEST_BUCKET_NAME = 'postech-ml-engineering-fase-2-tech-challenge-bucket'
     PROCESS_DATE = '{{ ds }}'
     FILE_NAME = 'bovespa.parquet'
     
-    DEST_S3_FOLDER_PATH = '{s3_folder}/{process_date}/{file_name}'
+    DEST_S3_FOLDER_PATH = '{s3_folder}/extract_date={process_date}/{file_name}'
     
     task_1 = PythonOperator(
         task_id='extract_bovespa',
@@ -58,3 +59,5 @@ with DAG(
             )
         }
     )
+
+    task_1 >> task_2
