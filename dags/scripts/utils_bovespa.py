@@ -124,15 +124,17 @@ def upload_to_s3(
         region_name=region
     )
 
-    files: List[Tuple[str, str]] = [
-        ("/home/platero/big_data_pipelines/data/bronze/vendas/produtos.csv", dest_s3_folder_path + "produtos.csv"),
-        ("/home/platero/big_data_pipelines/data/bronze/vendas/usuarios.csv", dest_s3_folder_path + "usuarios.csv"),
-        ("/home/platero/big_data_pipelines/data/bronze/vendas/vendas.csv", dest_s3_folder_path + "vendas.csv")
-    ]
+    files = os.listdir(src_folder_path)
+    
+    if not files:
+        logger.warning(f"Nenhum arquivo encontrado em {src_folder_path}")
+        return
 
-    for file_path, s3_file_name in files:
-        try:
-            s3.upload_file(file_path, dest_bucket_name, s3_file_name)
-            logger.info(f"Arquivo {file_path} carregado com sucesso para {dest_bucket_name}/{s3_file_name}")
-        except Exception as e:
-            logger.error(f"Erro ao carregar o arquivo {file_path}:", e)
+    file_name = files[0]
+    file_path = os.path.join(src_folder_path, file_name)
+
+    try:
+        s3.upload_file(file_path, dest_bucket_name, f'{dest_s3_folder_path}{file_name}')
+        logger.info(f"Arquivo {file_path} carregado com sucesso para {dest_bucket_name}/{dest_s3_folder_path}")
+    except Exception as e:
+        logger.error(f"Erro ao carregar o arquivo {file_path}:", e)
