@@ -8,6 +8,9 @@ from scripts.utils_bovespa import extract_bovespa, upload_to_s3
 from airflow.models import Variable
 
 
+
+
+
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
