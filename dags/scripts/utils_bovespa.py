@@ -1,7 +1,6 @@
 import os
 import time
 import logging
-from typing import List, Tuple
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -22,6 +21,7 @@ def extract_bovespa(
     """
     
     """
+    logger.info(f"Extração para a data {process_date}")
     try:
         #removendo arquivo
         for file in os.listdir(os.path.abspath(dest_folder_path)):
@@ -105,7 +105,8 @@ def upload_to_s3(
         region: str,
         src_folder_path: str,
         dest_bucket_name: str,
-        dest_s3_folder_path: str
+        dest_s3_folder_path: str,
+        process_date: str
     ) -> None:
     """
     Realiza o upload dos arquivos produtos.csv, usuarios.csv e vendas.csv para a pasta bronze no S3.
@@ -117,6 +118,8 @@ def upload_to_s3(
         dest_bucket_name (str): Nome do bucket.
         dest_s3_folder_path (str): Caminho de destino do arquivo.
     """
+    logger.info(f"Ingestão para a data {process_date}")
+
     s3 = boto3.client(
         's3',
         aws_access_key_id=aws_access_key_id,
@@ -134,7 +137,7 @@ def upload_to_s3(
     file_path = os.path.join(src_folder_path, file_name)
 
     try:
-        s3.upload_file(file_path, dest_bucket_name, f'{dest_s3_folder_path}{file_name}')
+        s3.upload_file(file_path, dest_bucket_name, os.path.join(dest_s3_folder_path, file_name))
         logger.info(f"Arquivo {file_path} carregado com sucesso para {dest_bucket_name}/{dest_s3_folder_path}")
     except Exception as e:
         logger.error(f"Erro ao carregar o arquivo {file_path}:", e)
