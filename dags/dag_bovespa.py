@@ -26,7 +26,7 @@ with DAG(
     AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
     AWS_REGION = os.getenv('AWS_REGION')
 
-    DEST_LOCAL_FOLDER_PATH = 'data'
+    DEST_LOCAL_FOLDER_PATH = os.path.abspath('data')
 
     DEST_BUCKET_NAME = 'postech-ml-engineering-fase-2-tech-challenge-bucket'
     PROCESS_DATE = '{{ ds }}'

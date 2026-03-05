@@ -24,8 +24,8 @@ def extract_bovespa(
     """
     try:
         #removendo arquivo
-        for file in os.listdir(dest_folder_path):
-            file_path = os.path.join(dest_folder_path, file)
+        for file in os.listdir(os.path.abspath(dest_folder_path)):
+            file_path = os.path.join(os.path.abspath(dest_folder_path), file)
             os.remove(file_path)
 
         #configurações do chrome
@@ -36,7 +36,7 @@ def extract_bovespa(
         chrome_options.add_argument("--window-size=1920,1080")
 
         prefs = {
-            "download.default_directory": dest_folder_path,
+            "download.default_directory": os.path.abspath(dest_folder_path),
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
             "safebrowsing.enabled": True
@@ -128,7 +128,7 @@ def upload_to_s3(
     
     if not files:
         logger.warning(f"Nenhum arquivo encontrado em {src_folder_path}")
-        return
+        raise
 
     file_name = files[0]
     file_path = os.path.join(src_folder_path, file_name)
