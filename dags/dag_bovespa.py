@@ -3,7 +3,9 @@ import pendulum
 from datetime import timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 from scripts.utils_bovespa import extract_bovespa, upload_to_s3
+from airflow.models import Variable
 
 
 default_args = {
@@ -22,9 +24,9 @@ with DAG(
     tags=["bovespa"]
 ) as dag:
     
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-    AWS_REGION = os.getenv("AWS_REGION")
+    AWS_ACCESS_KEY_ID = Variable.get("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = Variable.get("AWS_SECRET_ACCESS_KEY")
+    AWS_REGION = "us-east-1"
 
     DEST_LOCAL_FOLDER_PATH = os.path.abspath("data")
 
@@ -35,7 +37,7 @@ with DAG(
     DEST_S3_FOLDER_PATH = "{s3_folder}/extract_date={process_date}/{file_name}"
     
     task_1 = PythonOperator(
-        task_id="extract_bovespa",
+        task_id="web_scraping",
         python_callable=extract_bovespa,
         op_kwargs={
             "dest_folder_path": DEST_LOCAL_FOLDER_PATH,
@@ -61,4 +63,17 @@ with DAG(
         }
     )
 
-    task_1 >> task_2
+    task_3 = GlueJobOperator(
+        task_id="submit_glue_job",
+        job_name="job_bronze_to_silver",
+        script_location=f"s3://{DEST_BUCKET_NAME}/scripts/bronze_to_silver.py",
+        script_args={
+            "--input_path": f"s3://{DEST_BUCKET_NAME}/bronze/extract_date={PROCESS_DATE}/*.csv",
+            "--output_path": f"s3://{DEST_BUCKET_NAME}/silver/"
+        },
+        region_name=AWS_REGION,
+        aws_conn_id="aws_conn_id",
+        wait_for_completion=True,
+    )
+
+    task_1 >> task_2 >> task_3
