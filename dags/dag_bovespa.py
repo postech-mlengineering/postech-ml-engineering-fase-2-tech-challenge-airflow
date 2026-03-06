@@ -66,7 +66,7 @@ with DAG(
     task_3 = GlueJobOperator(
         task_id="submit_glue_job",
         job_name="job_bronze_to_silver",
-        script_location=f"s3://{DEST_BUCKET_NAME}/scripts/bronze_to_silver.py",
+        script_location=f"s3://{DEST_BUCKET_NAME}/scripts/job_bronze_to_silver.py",
         script_args={
             "--input_path": f"s3://{DEST_BUCKET_NAME}/bronze/extract_date={PROCESS_DATE}/*.csv",
             "--output_path": f"s3://{DEST_BUCKET_NAME}/silver/",
