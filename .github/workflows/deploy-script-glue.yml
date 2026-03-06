@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'dags/scripts/job_bronze_to_silver.py'
+      - '/dags/scripts/job_bronze_to_silver.py'
 
 jobs:
   deploy:
@@ -25,4 +25,4 @@ jobs:
 
       - name: Upload para S3
         run: |
-          aws s3 cp .dags/scripts/job_bronze_to_silver.py s3://${{ secrets.S3_BUCKET }}/scripts/job_bronze_to_silver.py
+          aws s3 cp ./dags/scripts/job_bronze_to_silver.py s3://${{ secrets.S3_BUCKET }}/scripts/job_bronze_to_silver.py
