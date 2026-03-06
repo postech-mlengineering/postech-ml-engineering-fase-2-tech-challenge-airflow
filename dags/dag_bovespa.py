@@ -55,7 +55,7 @@ with DAG(
             "src_folder_path": DEST_LOCAL_FOLDER_PATH,
             "dest_bucket_name": DEST_BUCKET_NAME,
             "dest_s3_folder_path": DEST_S3_FOLDER_PATH.format(
-                s3_folder="bronze",
+                s3_folder="bronze/bovespa/pregao",
                 process_date=PROCESS_DATE,
                 file_name=""
             ),
@@ -68,8 +68,8 @@ with DAG(
         job_name="job_bronze_to_silver",
         script_location=f"s3://{DEST_BUCKET_NAME}/scripts/job_bronze_to_silver.py",
         script_args={
-            "--input_path": f"s3://{DEST_BUCKET_NAME}/bronze/extract_date={PROCESS_DATE}/*.csv",
-            "--output_path": f"s3://{DEST_BUCKET_NAME}/silver/",
+            "--input_path": f"s3://{DEST_BUCKET_NAME}/bronze/bovespa/pregao/extract_date={PROCESS_DATE}/*.csv",
+            "--output_path": f"s3://{DEST_BUCKET_NAME}/silver/bovespa/pregao",
             "--process_date": PROCESS_DATE
         },
         region_name=AWS_REGION,

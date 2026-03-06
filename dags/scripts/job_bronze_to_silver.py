@@ -32,7 +32,6 @@ df = (spark.read
       .option("sep", ";")
       .option("header", "False")
       .option("encoding", "latin1")
-      .option("skipRows", 2) #pula duas linhas e pega o header na segunda
       .schema(schema)
       .csv(args["input_path"])
       )
@@ -44,6 +43,11 @@ df = df \
     .withColumn("acum", f.regexp_replace("acum", ",",   ".").cast("float")) \
     .withColumn("process_date", f.lit(args["process_date"]))
 
-df.write.mode("overwrite").partitionBy("process_date").parquet(args["output_path"])
+#limpeza
+df = df.filter(~df["acao"].contains("Ação")) \
+       .filter(~f.isnull(df["acao"]))
+
+
+df.write.mode("overwrite").partitionBy("process_date", "cod").parquet(args["output_path"])
 
 job.commit()
