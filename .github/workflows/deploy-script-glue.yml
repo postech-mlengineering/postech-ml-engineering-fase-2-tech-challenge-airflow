@@ -7,7 +7,11 @@ on:
       - main
     paths:
       - '/dags/scripts/job_bronze_to_silver.py'
-
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '/dags/scripts/job_bronze_to_silver.py'
 jobs:
   deploy:
     runs-on: ubuntu-latest
