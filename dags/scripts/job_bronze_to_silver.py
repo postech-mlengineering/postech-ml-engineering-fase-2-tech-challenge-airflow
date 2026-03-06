@@ -3,7 +3,7 @@ from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
-from pyspark.sql import functions as F
+from pyspark.sql import functions as f
 from pyspark.sql.types import StructType, StructField, StringType
 
 
@@ -32,18 +32,18 @@ df = (spark.read
       .option("sep", ";")
       .option("header", "False")
       .option("encoding", "latin1")
-      .option("skipRows", 2) #pula linha 1 e pega o header na segunda
+      .option("skipRows", 2) #pula duas linhas e pega o header na segunda
       .schema(schema)
       .csv(args["input_path"])
       )
 
 #transformações
 df = df \
-    .withColumn("qtd",  F.regexp_replace("qtd",  "\\.", "").cast("long")) \
-    .withColumn("part", F.regexp_replace("part", ",",   ".").cast("float")) \
-    .withColumn("acum", F.regexp_replace("acum", ",",   ".").cast("float")) \
-    .withColumn("data_pregao", F.lit(args["process_date"]))
+    .withColumn("qtd",  f.regexp_replace("qtd",  "\\.", "").cast("long")) \
+    .withColumn("part", f.regexp_replace("part", ",",   ".").cast("float")) \
+    .withColumn("acum", f.regexp_replace("acum", ",",   ".").cast("float")) \
+    .withColumn("process_date", f.lit(args["process_date"]))
 
-df.write.mode("overwrite").partitionBy("data_pregao").parquet(args["output_path"])
+df.write.mode("overwrite").partitionBy("process_date").parquet(args["output_path"])
 
 job.commit()
