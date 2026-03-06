@@ -48,6 +48,5 @@ df = df.filter(~df["acao"].contains("Ação")) \
        .filter(~f.isnull(df["acao"]))
 
 df.write.mode("overwrite").partitionBy("process_date", "cod").parquet(args["output_path"])
-
 #Job Commit
 job.commit()
