@@ -8,9 +8,6 @@ from scripts.utils_bovespa import extract_bovespa, upload_to_s3
 from airflow.models import Variable
 
 
-
-
-
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
@@ -72,7 +69,8 @@ with DAG(
         script_location=f"s3://{DEST_BUCKET_NAME}/scripts/bronze_to_silver.py",
         script_args={
             "--input_path": f"s3://{DEST_BUCKET_NAME}/bronze/extract_date={PROCESS_DATE}/*.csv",
-            "--output_path": f"s3://{DEST_BUCKET_NAME}/silver/"
+            "--output_path": f"s3://{DEST_BUCKET_NAME}/silver/",
+            "--process_date": PROCESS_DATE
         },
         region_name=AWS_REGION,
         aws_conn_id="aws_conn_id",

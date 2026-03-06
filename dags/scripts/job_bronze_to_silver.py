@@ -6,21 +6,18 @@ from awsglue.job import Job
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType
 
-from datetime import datetime
 
-# 1. Obter argumentos passados pelo Airflow GlueJobOperator
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'input_path', 'output_path'])
+args = getResolvedOptions(sys.argv, ["JOB_NAME", "input_path", "output_path", "process_date"])
 
-# 2. Inicializar contexto do Spark/Glue
+#nicializa contexto do spark/glue
 sc = SparkContext()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
 job = Job(glueContext)
-job.init(args['JOB_NAME'], args)
+job.init(args["JOB_NAME"], args)
 
-# 3. Leitura do arquivo CSV da zona Bronze
-# Encoding latin1 é padrão para arquivos da B3
-
+#leitura do arquivo camada bronze
+#encoding latin1 é padrão para arquivos da B3
 schema = StructType([
     StructField("setor", StringType(), True),
     StructField("cod",   StringType(), True),
@@ -33,23 +30,20 @@ schema = StructType([
 
 df = (spark.read
       .option("sep", ";")
-      .option("header", "true")
+      .option("header", "False")
       .option("encoding", "latin1")
-      .option("skipRows", 2) # pula linha 1 (titutlo) pegar o header na segunda
+      .option("skipRows", 2) #pula linha 1 e pega o header na segunda
       .schema(schema)
-      .csv(args['input_path'])
+      .csv(args["input_path"])
       )
 
-# Limpeza — usa o nome correto da coluna
-df = df.filter(F.col("cod").isNotNull() & (F.col("cod") != ""))
-
-# Transformações
+#transformações
 df = df \
     .withColumn("qtd",  F.regexp_replace("qtd",  "\\.", "").cast("long")) \
     .withColumn("part", F.regexp_replace("part", ",",   ".").cast("float")) \
     .withColumn("acum", F.regexp_replace("acum", ",",   ".").cast("float")) \
-    .withColumn("data_pregao", F.lit(datetime.now().strftime("%Y-%m-%d")))
+    .withColumn("data_pregao", F.lit(args["process_date"]))
 
-df.write.mode("overwrite").parquet(args['output_path'])
+df.write.mode("overwrite").partitionBy("data_pregao").parquet(args["output_path"])
 
 job.commit()
