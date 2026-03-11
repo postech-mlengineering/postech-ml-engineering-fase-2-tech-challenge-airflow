@@ -10,7 +10,7 @@ from airflow.models import Variable
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
-    "start_date": pendulum.now(tz="America/Sao_Paulo").subtract(days=1),
+    "start_date": "2026-03-01",
     "retries": False,
     "retry_delay": timedelta(minutes=5)
 }
