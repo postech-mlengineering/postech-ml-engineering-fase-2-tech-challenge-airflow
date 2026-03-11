@@ -3,14 +3,14 @@ import pendulum
 from datetime import timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from scripts.utils_bovespa import extract_bovespa, upload_to_s3, submit_glue_job
+from scripts.utils_bovespa import extract_bovespa, upload_to_s3, submit_glue_job, load_athena_partition
 from airflow.models import Variable
 
 
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
-    "start_date": "2026-03-01",
+    "start_date": pendulum.now(tz="America/Sao_Paulo").subtract(days=1),
     "retries": False,
     "retry_delay": timedelta(minutes=5)
 }
@@ -78,4 +78,17 @@ with DAG(
         }
     )
 
-    task_1 >> task_2 >> task_3
+    task_4 = PythonOperator(
+        task_id="load_athena_partition",
+        python_callable=load_athena_partition,
+        op_kwargs={
+            "aws_access_key_id": AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
+            "region": AWS_REGION,
+            "database": "db_bovespa",
+            "table_name": "pregao",
+            "s3_athena_path": f"s3://{DEST_BUCKET_NAME}/athena/"
+        }
+    )
+
+    task_1 >> task_2 >> task_3 >> task_4

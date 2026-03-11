@@ -209,3 +209,60 @@ def submit_glue_job(
         else:
             logger.info(f"Aguardando Glue Job... Status atual: {status}")
             time.sleep(30)
+
+
+def load_athena_partition(
+    aws_access_key_id: str,
+    aws_secret_access_key: str,
+    region: str,
+    database: str,
+    table_name: str,
+    s3_athena_path: str
+) -> None:
+    """
+    Executa o comando MSCK REPAIR TABLE via Athena para atualizar as partições no Glue Data Catalog.
+
+    Args:
+        aws_access_key_id (str): ID da chave de acesso AWS.
+        aws_secret_access_key (str): Chave de acesso secreta AWS.
+        region (str): Região AWS onde o Athena/Glue estão localizados.
+        database (str): Nome do banco de dados no Glue Data Catalog.
+        table_name (str): Nome da tabela a ser reparada.
+        s3_athena_path (str): Caminho no S3 para armazenar os logs de execução do Athena.
+
+    Raises:
+        Exception: Se a query do Athena falhar ou for cancelada.
+    """
+    client = boto3.client(
+        'athena',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        region_name=region
+    )
+
+    query = f"MSCK REPAIR TABLE {table_name}"
+    
+    logger.info(f"Iniciando reparo da tabela {database}.{table_name}")
+
+    response = client.start_query_execution(
+        QueryString=query,
+        QueryExecutionContext={'Database': database},
+        ResultConfiguration={'OutputLocation': s3_athena_path}
+    )
+
+    execution_id = response['QueryExecutionId']
+
+    while True:
+        status_get = client.get_query_execution(QueryExecutionId=execution_id)
+        status = status_get['QueryExecution']['Status']['State']
+
+        if status == 'SUCCEEDED':
+            logger.info(f"Tabela {table_name} reparada com sucesso.")
+            break
+        elif status in ['FAILED', 'CANCELLED']:
+            reason = status_get['QueryExecution']['Status'].get('StateChangeReason', 'Erro desconhecido')
+            logger.error(f"Falha ao reparar tabela. Status: {status}. Motivo: {reason}")
+            raise Exception(f"Athena Query {status}: {reason}")
+        else:
+            logger.info(f"Aguardando reparo da tabela... Status: {status}")
+            time.sleep(5)
