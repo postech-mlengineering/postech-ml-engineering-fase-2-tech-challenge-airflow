@@ -158,7 +158,6 @@ def upload_to_s3(
         logger.error(f"Erro ao carregar o arquivo {file_path}:", e)
 
 
-
 def submit_glue_job(
     aws_access_key_id: str,
     aws_secret_access_key: str,

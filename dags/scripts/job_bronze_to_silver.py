@@ -47,7 +47,7 @@ df = df \
 df = df.filter(~df["acao"].contains("Ação")) \
        .filter(~f.isnull(df["acao"]))
 
-df.write.mode("overwrite").partitionBy("process_date", "cod").parquet(args["output_path"])
+df.write.mode("append").partitionBy("process_date", "cod").parquet(args["output_path"])
 #Comentario de teste para upload no S3
 #Job Commit
 job.commit()
