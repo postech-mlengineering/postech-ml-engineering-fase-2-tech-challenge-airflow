@@ -3,8 +3,7 @@ import pendulum
 from datetime import timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
-from scripts.utils_bovespa import extract_bovespa, upload_to_s3
+from scripts.utils_bovespa import extract_bovespa, upload_to_s3, submit_glue_job
 from airflow.models import Variable
 
 
@@ -63,18 +62,20 @@ with DAG(
         }
     )
 
-    task_3 = GlueJobOperator(
+    task_3 = PythonOperator(
         task_id="submit_glue_job",
-        job_name="job_bronze_to_silver",
-        script_location=f"s3://{DEST_BUCKET_NAME}/scripts/job_bronze_to_silver.py",
-        script_args={
-            "--input_path": f"s3://{DEST_BUCKET_NAME}/bronze/bovespa/pregao/extract_date={PROCESS_DATE}/*.csv",
-            "--output_path": f"s3://{DEST_BUCKET_NAME}/silver/bovespa/pregao",
-            "--process_date": PROCESS_DATE
-        },
-        region_name=AWS_REGION,
-        aws_conn_id="aws_conn_id",
-        wait_for_completion=True,
+        python_callable=submit_glue_job,
+        op_kwargs={
+            "aws_access_key_id": AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
+            "region": AWS_REGION,
+            "job_name": "job_bronze_to_silver",
+            "script_args": {
+                "--input_path": f"s3://{DEST_BUCKET_NAME}/bronze/bovespa/pregao/extract_date={PROCESS_DATE}/*.csv",
+                "--output_path": f"s3://{DEST_BUCKET_NAME}/silver/bovespa/pregao",
+                "--process_date": PROCESS_DATE
+            }
+        }
     )
 
     task_1 >> task_2 >> task_3

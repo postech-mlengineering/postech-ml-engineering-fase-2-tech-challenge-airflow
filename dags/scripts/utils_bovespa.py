@@ -19,7 +19,17 @@ def extract_bovespa(
         process_date: str
     ) -> None:
     """
-    
+    Realiza web scraping no site da B3 para extrair a composição da 
+    carteira do IBOVESPA via Selenium.
+
+    Args:
+        dest_folder_path (str): Caminho local onde o arquivo CSV será 
+        baixado e armazenado.
+        process_date (str): Data de referência para o log da extração.
+
+    Raises:
+        Exception: Caso o download não seja detectado no tempo limite ou 
+        ocorra falha no navegador.
     """
     logger.info(f"Extração para a data {process_date}")
     try:
@@ -109,14 +119,19 @@ def upload_to_s3(
         process_date: str
     ) -> None:
     """
-    Realiza o upload dos arquivos produtos.csv, usuarios.csv e vendas.csv para a pasta bronze no S3.
+    Faz o upload do primeiro arquivo encontrado em uma pasta local para um bucket S3 específico.
 
     Args:
         aws_access_key_id (str): ID da chave de acesso AWS.
         aws_secret_access_key (str): Chave de acesso secreta AWS.
-        region (str): Região da AWS onde o bucket está localizado.
-        dest_bucket_name (str): Nome do bucket.
-        dest_s3_folder_path (str): Caminho de destino do arquivo.
+        region (str): Região AWS onde o bucket está localizado.
+        src_folder_path (str): Caminho da pasta local de origem dos arquivos.
+        dest_bucket_name (str): Nome do bucket S3 de destino.
+        dest_s3_folder_path (str): Caminho (prefixo) de destino dentro do bucket.
+        process_date (str): Data de processamento para fins de log.
+
+    Raises:
+        Exception: Se a pasta de origem estiver vazia ou ocorrer erro durante a transmissão para o S3.
     """
     logger.info(f"Ingestão para a data {process_date}")
 
@@ -141,3 +156,57 @@ def upload_to_s3(
         logger.info(f"Arquivo {file_path} carregado com sucesso para {dest_bucket_name}/{dest_s3_folder_path}")
     except Exception as e:
         logger.error(f"Erro ao carregar o arquivo {file_path}:", e)
+
+
+
+def submit_glue_job(
+    aws_access_key_id: str,
+    aws_secret_access_key: str,
+    region: str,
+    job_name: str,
+    script_args: dict
+) -> None:
+    """
+    Dispara a execução de um AWS Glue Job e monitora seu status em tempo real até a finalização.
+
+    Args:
+        aws_access_key_id (str): ID da chave de acesso AWS.
+        aws_secret_access_key (str): Chave de acesso secreta AWS.
+        region (str): Região AWS onde o Glue Job está configurado.
+        job_name (str): Nome do job a ser executado.
+        script_args (dict): Dicionário de argumentos (parâmetros) enviados para o script Glue.
+
+    Raises:
+        Exception: Se o job retornar status 'FAILED', 'STOPPED' ou 'TIMEOUT', ou falha na comunicação com a API.
+    """
+    client = boto3.client(
+        'glue',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        region_name=region
+    )
+
+    logger.info(f"Iniciando Glue Job: {job_name}")
+    
+    response = client.start_job_run(
+        JobName=job_name,
+        Arguments=script_args
+    )
+    
+    job_run_id = response['JobRunId']
+    logger.info(f"Job Run ID: {job_run_id}")
+
+    while True:
+        status_get = client.get_job_run(JobName=job_name, RunId=job_run_id)
+        status = status_get['JobRun']['JobRunState']
+        
+        if status == 'SUCCEEDED':
+            logger.info(f"Glue Job {job_name} finalizado com sucesso!")
+            break
+        elif status in ['FAILED', 'STOPPED', 'TIMEOUT']:
+            error_message = status_get['JobRun'].get('ErrorMessage', 'Sem mensagem de erro detalhada.')
+            logger.error(f"Erro no Glue Job {job_name}. Status: {status}. Erro: {error_message}")
+            raise Exception(f"Glue Job falhou com status: {status}")
+        else:
+            logger.info(f"Aguardando Glue Job... Status atual: {status}")
+            time.sleep(30)
