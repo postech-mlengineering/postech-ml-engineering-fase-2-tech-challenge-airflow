@@ -13,6 +13,7 @@ args = getResolvedOptions(sys.argv, ["JOB_NAME", "input_path", "output_path", "p
 sc = SparkContext()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
+spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
