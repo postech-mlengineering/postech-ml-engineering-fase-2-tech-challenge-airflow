@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+from typing import List
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -14,18 +15,18 @@ import boto3
 logger = logging.getLogger("airflow.task")
 
 
-def extract_bovespa(
+def web_scraping(
         dest_folder_path: str,
         process_date: str
     ) -> None:
     """
     Realiza web scraping no site da B3 para extrair a composição da 
-    carteira do IBOVESPA via Selenium.
+    carteira do IBOVESPA.
 
     Args:
         dest_folder_path (str): Caminho local onde o arquivo CSV será 
         baixado e armazenado.
-        process_date (str): Data de referência para o log da extração.
+        process_date (str): Data de processamento.
 
     Raises:
         Exception: Caso o download não seja detectado no tempo limite ou 
@@ -62,7 +63,7 @@ def extract_bovespa(
         driver.get(url)
         
         wait = WebDriverWait(driver, 30)
-        
+
         logger.info("Aguardando iframe...")
         wait.until(EC.presence_of_element_located((By.ID, "bvmf_iframe")))
         driver.switch_to.frame("bvmf_iframe")
@@ -75,7 +76,7 @@ def extract_bovespa(
         logger.info("Clicando em Buscar...")
         btn_buscar = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'BUSCAR')]")))
         driver.execute_script("arguments[0].click();", btn_buscar)
-        
+
         time.sleep(5) 
 
         logger.info("Localizando botão de download...")
@@ -97,19 +98,19 @@ def extract_bovespa(
             time.sleep(1)
 
         if file_path:
-            logger.info(f"Arquivo processado salvo em: {dest_folder_path}")
+            logger.info(f"Arquivo salvo em: {dest_folder_path}")
         else:
             logger.error("Erro: O download não foi detectado a tempo.")
             raise
 
     except Exception as e:
-        logger.info(f"Ocorreu um erro: {e}")
+        logger.error(f"Ocorreu um erro: {e}")
     finally:
         driver.quit()
         logger.info("Processo finalizado.")
 
 
-def upload_to_s3(
+def upload_to_bronze(
         aws_access_key_id: str, 
         aws_secret_access_key: str, 
         region: str,
@@ -119,7 +120,7 @@ def upload_to_s3(
         process_date: str
     ) -> None:
     """
-    Faz o upload do primeiro arquivo encontrado em uma pasta local para um bucket S3 específico.
+    Realiza o upload do arquivo local para o bucket S3.
 
     Args:
         aws_access_key_id (str): ID da chave de acesso AWS.
@@ -127,13 +128,13 @@ def upload_to_s3(
         region (str): Região AWS onde o bucket está localizado.
         src_folder_path (str): Caminho da pasta local de origem dos arquivos.
         dest_bucket_name (str): Nome do bucket S3 de destino.
-        dest_s3_folder_path (str): Caminho (prefixo) de destino dentro do bucket.
-        process_date (str): Data de processamento para fins de log.
+        dest_s3_folder_path (str): Caminho de destino dentro do bucket.
+        process_date (str): Data de processamento.
 
     Raises:
         Exception: Se a pasta de origem estiver vazia ou ocorrer erro durante a transmissão para o S3.
     """
-    logger.info(f"Ingestão para a data {process_date}")
+    logger.info(f"Iniciando upload para a data {process_date}")
 
     s3 = boto3.client(
         's3',
@@ -163,7 +164,8 @@ def submit_glue_job(
     aws_secret_access_key: str,
     region: str,
     job_name: str,
-    script_args: dict
+    script_args: dict,
+    process_date: str
 ) -> None:
     """
     Dispara a execução de um AWS Glue Job e monitora seu status em tempo real até a finalização.
@@ -174,10 +176,12 @@ def submit_glue_job(
         region (str): Região AWS onde o Glue Job está configurado.
         job_name (str): Nome do job a ser executado.
         script_args (dict): Dicionário de argumentos (parâmetros) enviados para o script Glue.
-
+        process_date (str): Data de processamento.
     Raises:
         Exception: Se o job retornar status 'FAILED', 'STOPPED' ou 'TIMEOUT', ou falha na comunicação com a API.
     """
+    logger.info(f"Iniciando Glue Job para a data {process_date}")
+
     client = boto3.client(
         'glue',
         aws_access_key_id=aws_access_key_id,
@@ -211,28 +215,32 @@ def submit_glue_job(
             time.sleep(30)
 
 
-def load_athena_partition(
+def load_athena_tables(
     aws_access_key_id: str,
     aws_secret_access_key: str,
     region: str,
     database: str,
-    table_name: str,
-    s3_athena_path: str
+    athena_tables: List[str],
+    s3_athena_path: str,
+    process_date: str
 ) -> None:
     """
-    Executa o comando MSCK REPAIR TABLE via Athena para atualizar as partições no Glue Data Catalog.
+    Executa o comando MSCK REPAIR TABLE via Athena para uma lista de tabelas.
 
     Args:
         aws_access_key_id (str): ID da chave de acesso AWS.
         aws_secret_access_key (str): Chave de acesso secreta AWS.
         region (str): Região AWS onde o Athena/Glue estão localizados.
         database (str): Nome do banco de dados no Glue Data Catalog.
-        table_name (str): Nome da tabela a ser reparada.
-        s3_athena_path (str): Caminho no S3 para armazenar os logs de execução do Athena.
+        athena_tables (List[str]): Lista com os nomes das tabelas a serem carregadas.
+        s3_athena_path (str): Caminho no S3 para armazenar os logs de execução das queries.
+        process_date (str): Data de processamento.
 
     Raises:
-        Exception: Se a query do Athena falhar ou for cancelada.
+        Exception: Se a query do Athena falhar ou for cancelada para qualquer uma das tabelas.
     """
+    logger.info(f"Iniciando carga da tabelas para a data {process_date}")
+
     client = boto3.client(
         'athena',
         aws_access_key_id=aws_access_key_id,
@@ -240,29 +248,30 @@ def load_athena_partition(
         region_name=region
     )
 
-    query = f"MSCK REPAIR TABLE {table_name}"
-    
-    logger.info(f"Iniciando reparo da tabela {database}.{table_name}")
+    for table_name in athena_tables:
+        query = f"MSCK REPAIR TABLE {table_name}"
+        
+        logger.info(f"Carregando tabela {database}.{table_name}")
 
-    response = client.start_query_execution(
-        QueryString=query,
-        QueryExecutionContext={'Database': database},
-        ResultConfiguration={'OutputLocation': s3_athena_path}
-    )
+        response = client.start_query_execution(
+            QueryString=query,
+            QueryExecutionContext={'Database': database},
+            ResultConfiguration={'OutputLocation': s3_athena_path}
+        )
 
-    execution_id = response['QueryExecutionId']
+        execution_id = response['QueryExecutionId']
 
-    while True:
-        status_get = client.get_query_execution(QueryExecutionId=execution_id)
-        status = status_get['QueryExecution']['Status']['State']
+        while True:
+            status_get = client.get_query_execution(QueryExecutionId=execution_id)
+            status = status_get['QueryExecution']['Status']['State']
 
-        if status == 'SUCCEEDED':
-            logger.info(f"Tabela {table_name} reparada com sucesso.")
-            break
-        elif status in ['FAILED', 'CANCELLED']:
-            reason = status_get['QueryExecution']['Status'].get('StateChangeReason', 'Erro desconhecido')
-            logger.error(f"Falha ao reparar tabela. Status: {status}. Motivo: {reason}")
-            raise Exception(f"Athena Query {status}: {reason}")
-        else:
-            logger.info(f"Aguardando reparo da tabela... Status: {status}")
-            time.sleep(5)
+            if status == 'SUCCEEDED':
+                logger.info(f"Tabela {table_name} carregada com sucesso.")
+                break
+            elif status in ['FAILED', 'CANCELLED']:
+                reason = status_get['QueryExecution']['Status'].get('StateChangeReason', 'Erro desconhecido')
+                logger.error(f"Falha ao carregar tabela {table_name}. Status: {status}. Motivo: {reason}")
+                raise Exception(f"Athena Query {status} para {table_name}: {reason}")
+            else:
+                logger.info(f"Aguardando carga da tabela {table_name}. Status: {status}")
+                time.sleep(5)

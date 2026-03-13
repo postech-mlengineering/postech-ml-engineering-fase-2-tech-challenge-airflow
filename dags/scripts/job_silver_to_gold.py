@@ -18,23 +18,33 @@ spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
-df = spark.read.parquet(args["input_path"])
+df = spark.read.parquet(args["input_path"]).select(
+    "process_date", 
+    "sector", 
+    "ticker", 
+    "quantity",
+    "weight"
+).cache()
 
-window_spec = Window.partitionBy("cod").orderBy("process_date").rowsBetween(-2, 0)
+#setor
+window_date = Window.partitionBy("process_date")
+df_sector = df.groupBy("process_date", "sector") \
+    .agg(f.sum("quantity").alias("quantity")) \
+    .withColumn("market_share", f.col("quantity") / f.sum("quantity").over(window_date))
 
-df_media_movel_cod = df.withColumn(
-    "media_movel_part", 
-    f.avg("part").over(window_spec)
+#cod
+window_ma = Window.partitionBy("ticker").orderBy("process_date").rowsBetween(-2, 0)
+df_ticker = df.withColumn(
+    "weight_moving_average", 
+    f.avg("weight").over(window_ma)
 ).select(
-    f.col("cod"), 
-    f.col("part"), 
-    f.col("media_movel_part"), 
+    f.col("ticker"), 
+    f.col("weight"), 
+    f.col("weight_moving_average"), 
     f.col("process_date")
 )
 
-df_soma_qtd_setor = df.groupBy('process_date', 'setor').agg(f.sum(f.col('qtd')))
-
-df_media_movel_cod.coalesce(1) .write.mode("overwrite").partitionBy("process_date", "cod").parquet(f'{args["output_path"]}/cod')
-df_soma_qtd_setor.coalesce(1) .write.mode("overwrite").partitionBy("process_date").parquet(f'{args["output_path"]}/setor')
+df_sector.coalesce(1).write.mode("overwrite").partitionBy("process_date").parquet(f'{args["output_path"]}/sector_market_share')
+df_ticker.coalesce(1).write.mode("overwrite").partitionBy("process_date", "ticker").parquet(f'{args["output_path"]}/asset_moving_average')
 
 job.commit()

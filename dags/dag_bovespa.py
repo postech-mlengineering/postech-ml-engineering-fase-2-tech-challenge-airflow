@@ -3,14 +3,14 @@ import pendulum
 from datetime import timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from scripts.utils_bovespa import extract_bovespa, upload_to_s3, submit_glue_job, load_athena_partition
+from scripts.utils_bovespa import web_scraping, upload_to_bronze, submit_glue_job, load_athena_tables
 from airflow.models import Variable
 
 
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
-    "start_date": pendulum.now(tz="America/Sao_Paulo").subtract(days=1),
+    "start_date": pendulum.now(tz="America/Sao_Paulo").subtract(days=4),
     "retries": False,
     "retry_delay": timedelta(minutes=5)
 }
@@ -19,7 +19,8 @@ with DAG(
     dag_id="dag_bovespa",
     default_args=default_args,
     schedule="@daily",
-    catchup=False,
+    max_active_runs=1,
+    catchup=True,
     tags=["bovespa"]
 ) as dag:
 
@@ -27,43 +28,43 @@ with DAG(
     AWS_SECRET_ACCESS_KEY = Variable.get("AWS_SECRET_ACCESS_KEY")
     AWS_REGION = "us-east-1"
 
-    DEST_LOCAL_FOLDER_PATH = os.path.abspath("data")
+    PROCESS_DATE = "{{ data_interval_start.in_timezone('America/Sao_Paulo').strftime('%Y-%m-%d') }}"
+    DEST_LOCAL_FOLDER_PATH = os.path.abspath(f"data/raw/extract_date={PROCESS_DATE}")
 
     DEST_BUCKET_NAME = "postech-ml-engineering-fase-2-tech-challenge-bucket"
-    PROCESS_DATE = "{{ data_interval_start.in_timezone('America/Sao_Paulo').strftime('%Y-%m-%d') }}"
-    FILE_NAME = "bovespa.parquet"
-    
     DEST_S3_FOLDER_PATH = "{s3_folder}/extract_date={process_date}/{file_name}"
     
-    task_1 = PythonOperator(
-        task_id="web_scraping",
-        python_callable=extract_bovespa,
-        op_kwargs={
-            "dest_folder_path": DEST_LOCAL_FOLDER_PATH,
-            "process_date": PROCESS_DATE
-        }
-    )
+    ATHENA_TABLES= ["tb_index_composition", "tb_asset_moving_average", "tb_sector_market_share"]
 
-    task_2 = PythonOperator(
-        task_id="upload_to_s3",
-        python_callable=upload_to_s3,
-        op_kwargs={
-            "aws_access_key_id": AWS_ACCESS_KEY_ID,
-            "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
-            "region": AWS_REGION,
-            "src_folder_path": DEST_LOCAL_FOLDER_PATH,
-            "dest_bucket_name": DEST_BUCKET_NAME,
-            "dest_s3_folder_path": DEST_S3_FOLDER_PATH.format(
-                s3_folder="bronze/bovespa/pregao",
-                process_date=PROCESS_DATE,
-                file_name=""
-            ),
-            "process_date": PROCESS_DATE
-        }
-    )
+    #task_1 = PythonOperator(
+    #    task_id="web_scraping",
+    #    python_callable=web_scraping,
+    #    op_kwargs={
+    #        "dest_folder_path": DEST_LOCAL_FOLDER_PATH,
+    #        "process_date": PROCESS_DATE
+    #    }
+    #)
+
+    #task_2 = PythonOperator(
+    #    task_id="upload_to_bronze",
+    #    python_callable=upload_to_bronze,
+    #    op_kwargs={
+    #        "aws_access_key_id": AWS_ACCESS_KEY_ID,
+    #        "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
+    #        "region": AWS_REGION,
+    #        "src_folder_path": DEST_LOCAL_FOLDER_PATH,
+    #        "dest_bucket_name": DEST_BUCKET_NAME,
+    #        "dest_s3_folder_path": DEST_S3_FOLDER_PATH.format(
+    #            s3_folder="bronze/bovespa/index_composition",
+    #            process_date=PROCESS_DATE,
+    #            file_name=""
+    #        ),
+    #        "process_date": PROCESS_DATE
+    #    }
+    #)
 
     task_3 = PythonOperator(
-        task_id="submit_glue_job",
+        task_id="submit_glue_job_silver",
         python_callable=submit_glue_job,
         op_kwargs={
             "aws_access_key_id": AWS_ACCESS_KEY_ID,
@@ -71,10 +72,11 @@ with DAG(
             "region": AWS_REGION,
             "job_name": "job_bronze_to_silver",
             "script_args": {
-                "--input_path": f"s3://{DEST_BUCKET_NAME}/bronze/bovespa/pregao/extract_date={PROCESS_DATE}/*.csv",
-                "--output_path": f"s3://{DEST_BUCKET_NAME}/silver/bovespa/pregao",
+                "--input_path": f"s3://{DEST_BUCKET_NAME}/bronze/bovespa/index_composition/extract_date={PROCESS_DATE}/*.csv",
+                "--output_path": f"s3://{DEST_BUCKET_NAME}/silver/bovespa/index_composition",
                 "--process_date": PROCESS_DATE
-            }
+            },
+            "process_date": PROCESS_DATE
         }
     )
 
@@ -87,24 +89,28 @@ with DAG(
             "region": AWS_REGION,
             "job_name": "job_silver_to_gold",
             "script_args": {
-                "--input_path": f"s3://{DEST_BUCKET_NAME}/silver/bovespa/pregao",
-                "--output_path": f"s3://{DEST_BUCKET_NAME}/gold/bovespa/analytics",
+                "--input_path": f"s3://{DEST_BUCKET_NAME}/silver/bovespa/index_composition",
+                "--output_path": f"s3://{DEST_BUCKET_NAME}/gold/bovespa/index_composition",
                 "--process_date": PROCESS_DATE
-            }
+            },
+            "process_date": PROCESS_DATE
         }
     )
 
     task_5 = PythonOperator(
-        task_id="load_athena_partition",
-        python_callable=load_athena_partition,
+        task_id="load_athena_tables",
+        python_callable=load_athena_tables,
         op_kwargs={
             "aws_access_key_id": AWS_ACCESS_KEY_ID,
             "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
             "region": AWS_REGION,
             "database": "db_bovespa",
-            "table_name": "pregao",
-            "s3_athena_path": f"s3://{DEST_BUCKET_NAME}/athena/"
+            "athena_tables": ATHENA_TABLES,
+            "s3_athena_path": f"s3://{DEST_BUCKET_NAME}/athena/",
+            "process_date": PROCESS_DATE
         }
     )
     
-    task_1 >> task_2 >> task_3 >> task_4 >> task_5
+    #task_1 >> 
+    #task_2 >> task_3 >> 
+    task_3 >> task_4 >> task_5
