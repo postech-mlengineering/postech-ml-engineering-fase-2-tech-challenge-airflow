@@ -9,11 +9,13 @@ from pyspark.sql.types import StructType, StructField, StringType
 
 args = getResolvedOptions(sys.argv, ["JOB_NAME", "input_path", "output_path", "process_date"])
 
-#nicializa contexto do spark/glue
+#inicializa contexto do spark/glue
 sc = SparkContext()
 glueContext = GlueContext(sc)
+
 spark = glueContext.spark_session
 spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
@@ -45,10 +47,8 @@ df = df \
     .withColumn("process_date", f.lit(args["process_date"]))
 
 #limpeza
-df = df.filter(~df["acao"].contains("Ação")) \
-       .filter(~f.isnull(df["acao"]))
+df = df.filter(~df["acao"].contains("Ação")).filter(~f.isnull(df["acao"]))
 
 df.coalesce(1).write.mode("overwrite").partitionBy("process_date", "cod").parquet(args["output_path"])
-#Comentario de teste para upload no S3
-#Job Commit
+
 job.commit()

@@ -22,7 +22,7 @@ with DAG(
     catchup=False,
     tags=["bovespa"]
 ) as dag:
-    
+
     AWS_ACCESS_KEY_ID = Variable.get("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = Variable.get("AWS_SECRET_ACCESS_KEY")
     AWS_REGION = "us-east-1"
@@ -79,6 +79,22 @@ with DAG(
     )
 
     task_4 = PythonOperator(
+        task_id="submit_glue_job_gold",
+        python_callable=submit_glue_job,
+        op_kwargs={
+            "aws_access_key_id": AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
+            "region": AWS_REGION,
+            "job_name": "job_silver_to_gold",
+            "script_args": {
+                "--input_path": f"s3://{DEST_BUCKET_NAME}/silver/bovespa/pregao",
+                "--output_path": f"s3://{DEST_BUCKET_NAME}/gold/bovespa/analytics",
+                "--process_date": PROCESS_DATE
+            }
+        }
+    )
+
+    task_5 = PythonOperator(
         task_id="load_athena_partition",
         python_callable=load_athena_partition,
         op_kwargs={
@@ -90,5 +106,5 @@ with DAG(
             "s3_athena_path": f"s3://{DEST_BUCKET_NAME}/athena/"
         }
     )
-
-    task_1 >> task_2 >> task_3 >> task_4
+    
+    task_1 >> task_2 >> task_3 >> task_4 >> task_5
