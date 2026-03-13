@@ -36,32 +36,32 @@ with DAG(
     
     ATHENA_TABLES= ["tb_index_composition", "tb_asset_moving_average", "tb_sector_market_share"]
 
-    #task_1 = PythonOperator(
-    #    task_id="web_scraping",
-    #    python_callable=web_scraping,
-    #    op_kwargs={
-    #        "dest_folder_path": DEST_LOCAL_FOLDER_PATH,
-    #        "process_date": PROCESS_DATE
-    #    }
-    #)
+    task_1 = PythonOperator(
+        task_id="web_scraping",
+        python_callable=web_scraping,
+        op_kwargs={
+            "dest_folder_path": DEST_LOCAL_FOLDER_PATH,
+            "process_date": PROCESS_DATE
+        }
+    )
 
-    #task_2 = PythonOperator(
-    #    task_id="upload_to_bronze",
-    #    python_callable=upload_to_bronze,
-    #    op_kwargs={
-    #        "aws_access_key_id": AWS_ACCESS_KEY_ID,
-    #        "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
-    #        "region": AWS_REGION,
-    #        "src_folder_path": DEST_LOCAL_FOLDER_PATH,
-    #        "dest_bucket_name": DEST_BUCKET_NAME,
-    #        "dest_s3_folder_path": DEST_S3_FOLDER_PATH.format(
-    #            s3_folder="bronze/bovespa/index_composition",
-    #            process_date=PROCESS_DATE,
-    #            file_name=""
-    #        ),
-    #        "process_date": PROCESS_DATE
-    #    }
-    #)
+    task_2 = PythonOperator(
+        task_id="upload_to_bronze",
+        python_callable=upload_to_bronze,
+        op_kwargs={
+            "aws_access_key_id": AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
+            "region": AWS_REGION,
+            "src_folder_path": DEST_LOCAL_FOLDER_PATH,
+            "dest_bucket_name": DEST_BUCKET_NAME,
+            "dest_s3_folder_path": DEST_S3_FOLDER_PATH.format(
+                s3_folder="bronze/bovespa/index_composition",
+                process_date=PROCESS_DATE,
+                file_name=""
+            ),
+            "process_date": PROCESS_DATE
+        }
+    )
 
     task_3 = PythonOperator(
         task_id="submit_glue_job_silver",
@@ -111,6 +111,4 @@ with DAG(
         }
     )
     
-    #task_1 >> 
-    #task_2 >> task_3 >> 
-    task_3 >> task_4 >> task_5
+    task_1 >> task_2 >> task_3 >> task_3 >> task_4 >> task_5
