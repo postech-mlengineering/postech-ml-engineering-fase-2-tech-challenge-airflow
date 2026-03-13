@@ -10,7 +10,7 @@ from airflow.models import Variable
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
-    "start_date": pendulum.now(tz="America/Sao_Paulo").subtract(days=4),
+    "start_date": pendulum.now(tz="America/Sao_Paulo").subtract(days=1),
     "retries": False,
     "retry_delay": timedelta(minutes=5)
 }
@@ -20,7 +20,7 @@ with DAG(
     default_args=default_args,
     schedule="@daily",
     max_active_runs=1,
-    catchup=True,
+    catchup=False,
     tags=["bovespa"]
 ) as dag:
 
