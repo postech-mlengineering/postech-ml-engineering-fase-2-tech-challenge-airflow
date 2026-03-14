@@ -18,7 +18,7 @@ default_args = {
 with DAG(
     dag_id="dag_bovespa",
     default_args=default_args,
-    schedule="@daily",
+    schedule="0 0 * * 1-5", #seg a sex, meia noite 
     max_active_runs=1,
     catchup=False,
     tags=["bovespa"]
@@ -111,4 +111,4 @@ with DAG(
         }
     )
     
-    task_1 >> task_2 >> task_3 >> task_3 >> task_4 >> task_5
+    task_1 >> task_2 >> task_3 >> task_4 >> task_5
