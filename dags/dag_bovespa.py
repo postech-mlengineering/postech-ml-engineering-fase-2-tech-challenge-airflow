@@ -3,7 +3,7 @@ import pendulum
 from datetime import timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from scripts.utils_bovespa import web_scraping, upload_to_bronze, submit_glue_job, load_athena_tables
+from scripts.utils_bovespa import web_scraping, upload_to_bronze, submit_glue_job, submit_glue_crawlers, load_athena_tables
 from airflow.models import Variable
 
 
@@ -34,6 +34,7 @@ with DAG(
     DEST_BUCKET_NAME = "postech-ml-engineering-fase-2-tech-challenge-bucket"
     DEST_S3_FOLDER_PATH = "{s3_folder}/extract_date={process_date}/{file_name}"
     
+    CRAWLERS= ["index_composition", "asset_moving_average", "sector_market_share"]
     ATHENA_TABLES= ["tb_index_composition", "tb_asset_moving_average", "tb_sector_market_share"]
 
     task_1 = PythonOperator(
@@ -98,6 +99,18 @@ with DAG(
     )
 
     task_5 = PythonOperator(
+        task_id="submit_glue_crawler",
+        python_callable=submit_glue_crawlers,
+        op_kwargs={
+            "aws_access_key_id": AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
+            "region": AWS_REGION,
+            "crawlers": CRAWLERS,
+            "process_date": PROCESS_DATE
+        }
+    )
+
+    task_6 = PythonOperator(
         task_id="load_athena_tables",
         python_callable=load_athena_tables,
         op_kwargs={
@@ -111,4 +124,4 @@ with DAG(
         }
     )
     
-    task_1 >> task_2 >> task_3 >> task_4 >> task_5
+    task_1 >> task_2 >> task_3 >> task_4 >> task_5 >> task_6

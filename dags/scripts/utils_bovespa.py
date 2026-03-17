@@ -214,6 +214,52 @@ def submit_glue_job(
             time.sleep(30)
 
 
+def submit_glue_crawlers(
+    aws_access_key_id: str,
+    aws_secret_access_key: str,
+    region: str,
+    crawlers: List[str],
+    process_date: str
+) -> None:
+    """
+    Inicia um AWS Glue Crawler e aguarda sua finalização.
+    """
+    logger.info(f"Iniciando Crawler para a data {process_date}")
+    client = boto3.client(
+        'glue',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        region_name=region
+    )
+
+    for crawler in crawlers:
+        try:
+            logger.info(f"Iniciando Crawler: {crawler}")
+            client.start_crawler(Name=crawler)
+        except client.exceptions.CrawlerRunningException:
+            logger.warning(f"O Crawler {crawler} já está em execução.")
+
+        while True:
+            response = client.get_crawler(Name=crawler)
+            status = response['Crawler']['State']
+            
+            if status == 'READY':
+                last_crawl = response['Crawler'].get('LastCrawl', {})
+                exit_status = last_crawl.get('Status')
+                
+                if exit_status == 'SUCCEEDED':
+                    logger.info(f"Crawler {crawler} finalizado com sucesso.")
+                    break
+                elif exit_status == 'FAILED':
+                    error_msg = last_crawl.get('ErrorMessage', 'Erro desconhecido')
+                    raise Exception(f"Crawler falhou: {error_msg}")
+                else:
+                    break
+
+            logger.info(f"Aguardando crawler {crawler}. Status: {status}")
+            time.sleep(30)
+
+
 def load_athena_tables(
     aws_access_key_id: str,
     aws_secret_access_key: str,
