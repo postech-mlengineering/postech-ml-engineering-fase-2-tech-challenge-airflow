@@ -34,10 +34,9 @@ def web_scraping(
     """
     logger.info(f"Extração para a data {process_date}")
     try:
-        #removendo arquivo
-        for file in os.listdir(os.path.abspath(dest_folder_path)):
-            file_path = os.path.join(os.path.abspath(dest_folder_path), file)
-            os.remove(file_path)
+        if not os.path.exists(dest_folder_path):
+            os.makedirs(dest_folder_path, exist_ok=True)
+            logger.info(f"Pasta criada: {dest_folder_path}")
 
         #configurações do chrome
         chrome_options = Options()
