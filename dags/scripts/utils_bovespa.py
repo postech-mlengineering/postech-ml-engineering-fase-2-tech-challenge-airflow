@@ -33,6 +33,8 @@ def web_scraping(
         ocorra falha no navegador.
     """
     logger.info(f"Extração para a data {process_date}")
+
+    driver = None
     try:
         if not os.path.exists(dest_folder_path):
             os.makedirs(dest_folder_path, exist_ok=True)
@@ -103,9 +105,12 @@ def web_scraping(
             raise
 
     except Exception as e:
-        logger.error(f"Ocorreu um erro: {e}")
+        logger.error(f"Ocorreu um erro no scraping: {e}")
+        raise e 
     finally:
-        driver.quit()
+        if driver is not None:
+            driver.quit()
+            logger.info("Browser encerrado corretamente.")
         logger.info("Processo finalizado.")
 
 
@@ -136,7 +141,7 @@ def upload_to_bronze(
     logger.info(f"Iniciando upload para a data {process_date}")
 
     s3 = boto3.client(
-        's3',
+        "s3",
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
         region_name=region
@@ -177,36 +182,36 @@ def submit_glue_job(
         script_args (dict): Dicionário de argumentos (parâmetros) enviados para o script Glue.
         process_date (str): Data de processamento.
     Raises:
-        Exception: Se o job retornar status 'FAILED', 'STOPPED' ou 'TIMEOUT', ou falha na comunicação com a API.
+        Exception: Se o job retornar status "FAILED", "STOPPED" ou "TIMEOUT", ou falha na comunicação com a API.
     """
     logger.info(f"Iniciando Glue Job para a data {process_date}")
 
     client = boto3.client(
-        'glue',
+        "glue",
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
         region_name=region
     )
 
     logger.info(f"Iniciando Glue Job: {job_name}")
-    
+
     response = client.start_job_run(
         JobName=job_name,
         Arguments=script_args
     )
-    
-    job_run_id = response['JobRunId']
+
+    job_run_id = response["JobRunId"]
     logger.info(f"Job Run ID: {job_run_id}")
 
     while True:
         status_get = client.get_job_run(JobName=job_name, RunId=job_run_id)
-        status = status_get['JobRun']['JobRunState']
+        status = status_get["JobRun"]["JobRunState"]
         
-        if status == 'SUCCEEDED':
+        if status == "SUCCEEDED":
             logger.info(f"Glue Job {job_name} finalizado com sucesso!")
             break
-        elif status in ['FAILED', 'STOPPED', 'TIMEOUT']:
-            error_message = status_get['JobRun'].get('ErrorMessage', 'Sem mensagem de erro detalhada.')
+        elif status in ["FAILED", "STOPPED", "TIMEOUT"]:
+            error_message = status_get["JobRun"].get("ErrorMessage", "Sem mensagem de erro detalhada.")
             logger.error(f"Erro no Glue Job {job_name}. Status: {status}. Erro: {error_message}")
             raise Exception(f"Glue Job falhou com status: {status}")
         else:

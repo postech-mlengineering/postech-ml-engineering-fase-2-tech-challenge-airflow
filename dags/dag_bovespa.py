@@ -3,7 +3,7 @@ import pendulum
 from datetime import timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from scripts.utils_bovespa import web_scraping, upload_to_bronze, submit_glue_job, submit_glue_crawlers, load_athena_tables
+from scripts.utils_bovespa import web_scraping, upload_to_bronze, submit_glue_job, submit_glue_crawlers
 from airflow.models import Variable
 
 
@@ -109,19 +109,5 @@ with DAG(
             "process_date": PROCESS_DATE
         }
     )
-
-    task_6 = PythonOperator(
-        task_id="load_athena_tables",
-        python_callable=load_athena_tables,
-        op_kwargs={
-            "aws_access_key_id": AWS_ACCESS_KEY_ID,
-            "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
-            "region": AWS_REGION,
-            "database": "db_bovespa",
-            "athena_tables": ATHENA_TABLES,
-            "s3_athena_path": f"s3://{DEST_BUCKET_NAME}/athena/",
-            "process_date": PROCESS_DATE
-        }
-    )
     
-    task_1 >> task_2 >> task_3 >> task_4 >> task_5 >> task_6
+    task_1 >> task_2 >> task_3 >> task_4 >> task_5
