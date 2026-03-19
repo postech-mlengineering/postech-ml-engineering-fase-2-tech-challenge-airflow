@@ -29,7 +29,7 @@ with DAG(
     AWS_REGION = "us-east-1"
 
     PROCESS_DATE = "{{ data_interval_start.in_timezone('America/Sao_Paulo').strftime('%Y-%m-%d') }}"
-    DEST_LOCAL_FOLDER_PATH = os.path.abspath(f"data/raw/extract_date={PROCESS_DATE}")
+    DEST_LOCAL_FOLDER_PATH = os.path.abspath(f"data/bronze/extract_date={PROCESS_DATE}")
 
     DEST_BUCKET_NAME = "postech-ml-engineering-fase-2-tech-challenge-bucket"
     DEST_S3_FOLDER_PATH = "{s3_folder}/extract_date={process_date}/{file_name}"
