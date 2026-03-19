@@ -36,17 +36,52 @@ Certifique-se de ter o Python 3.11 e o Docker 29.1.1 instalados em seu sistema.
 
 É necessário que a conta AWS possua os seguintes recursos configurados:
 
-1.  **IAM User:** usuário cujas credenciais devem ser configuradas no Apache Airflow. Esse usuário deve possuir as seguintes permissões:
-    *   **AmazonS3FullAccess**: políticas para leitura e escrita nos buckets
-    *   **AWSGlueServiceRole**: políticas para execução de operações de serviço do Glue
-    *   **glue-role-full (Inline)**: política customizada para gerenciamento total do AWS Glue pelo usuário airflow
-    *   **athena-role-full (Inline)**: política customizada para gerenciamento total do AWS Athena pelo usuário airflow
-1.  **S3 Bucket:** um bucket S3 chamado `postech-ml-engineering-fase-2-tech-challenge-bucket` para o Data Lake, estruturado com as pastas: `bronze/`, `silver/` e `gold/`
-3.  **AWS Glue Data Catalog:** um banco de dados criado no Glue Catalog chamado `db_bovespa` para o mapeamento das tabelas
-4.  **Scripts de ETL:** os scripts PySpark dos jobs no Glue devem estar armazenados em um diretório cahamdo `scripts` localizado no bucket S3 para que o Apache Airflow possa referenciá-los
-5.  **Consultas do Athena:** os resultados das consultas do Athena devem ter um diretório chamado `athena-results`, configurado no bucket S3
-6.  **AWS Glue Crawlers:** os Crawlers responsáveis pelo mapeamento das camadas Silver e Gold devem estar previamente criados no console do AWS Glue para que o Apache Airflow possa disparar a atualização automática das tabelas no AWS Athena e metadados no AWS Glue Data Catalog.
-7.  **AWS Glue Jobs:** os jobs AWS Glue responsáveis pelas transformações entre as camadas medalhão devem estar previamente criados e vinculados à IAM Role de serviço e aos respectivos scripts no S3.
+1. Amazon S3 (Data Lake e Armazenamento)
+
+Toda a estrutura de arquivos e diretórios será centralizada no bucket: `postech-ml-engineering-fase-2-tech-challenge-bucket`.
+
+*   **Estrutura de Pastas do Data Lake (Medalhão):**
+    *   `bronze/`: dados brutos
+    *   `silver/`: dados limpos
+    *   `gold/`: dados agregados e prontos para consumo/análise
+*   **Armazenamento de Scripts (Glue):**
+    *   `scripts/`: diretório destinado aos scripts PySpark que serão executados pelos Glue Jobs
+*   **Resultados de Consultas (Athena):**
+    *   `athena-results/`: diretório configurado como *Query Result Location* para armazenar os logs e resultados de consultas do Amazon Athena
+
+2. AWS IAM (Identidade e Acessos)
+
+Configuração do usuário e das permissões necessárias para que o Apache Airflow interaja com a AWS e os serviços AWS interajam entre si.
+
+*   **IAM User:** usuário específico (ex: `airflow-user`) cujas credenciais serão usadas no Apache Airflow com as seguintes políticas:
+    *   Políticas Gerenciadas:
+        *   `AmazonS3FullAccess`: Acesso total para leitura e escrita no bucket.
+        *   `AWSGlueServiceRole`: Permissões necessárias para operações de serviço do Glue
+    *   Políticas Customizadas:
+        *   `glue-role-full`: Permissões totais para criação, exclusão e execução de componentes do AWS Glue
+        *   `athena-role-full`: Permissões totais para execução de queries e gerenciamento do AWS Athena
+    
+*   **IAM Role:** 
+    *  `glue-service-role`: política necessária para o usuário airflow informe a role de serviço para o AWS Glue durante a orquestração.
+
+3. AWS Glue (ETL e Catálogo)
+
+Componentes de processamento e organização de metadados.
+
+*   **AWS Glue Data Catalog:**
+    *   Banco de dados: `db_bovespa` (para mapeamento das tabelas das camadas silver e gold)
+*   **AWS Glue Jobs:**
+    *   Jobs PySpark previamente criados para realizar as transformações entre as camadas, devendo estar vinculados à IAM Role de serviço e apontando para os scripts na pasta `s3://.../scripts/`
+*   **AWS Glue Crawlers:**
+    *   Crawlers configurados para as camadas **Silver** e **Gold** para atualização automática do esquema das tabelas e metadados no AWS Glue Data Catalog
+
+4. Amazon Athena
+
+Configuração para consumo de dados via SQL.
+
+*   **Athena Workgroup:** utilização de um workgroup ativo (ex: `primary`) para o gerenciamento das execuções de queries.
+*   **Configuração de Saída:** definir o caminho `s3://postech-ml-engineering-fase-2-tech-challenge-bucket/athena-results/` como o local padrão de saída para evitar erros de permissão durante a execução de queries via Apache Airflow
+
 
 ### Instalação
 
