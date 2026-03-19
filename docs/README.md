@@ -28,7 +28,30 @@ O diagrama abaixo ilustra a arquitetura do projeto:
 
 ### Pré-requisitos
 
+**EC2/Servidor Local**
+
 Certifique-se de ter o Python 3.11 e o Docker 29.1.1 instalados em seu sistema.
+
+**AWS**
+
+É necessário que a conta AWS possua os seguintes recursos configurados:
+
+1.  **IAM User:** um usuário com cujas credenciais devem ser configuradas no Apache Airflow. Esse usuário deve possuir as seguintes permissões:
+    *   **AmazonS3FullAccess**: para leitura e escrita nos buckets
+    *   **AWSGlueServiceRole**: para execução de operações de serviço do Glue
+    *   **glue-role-full (Inline)**: política customizada para gerenciamento total do AWS Glue pelo usuário airflow
+    *   **athena-role-full (Inline)**: política customizada para gerenciamento total do AWS Athena pelo usuário airflow
+1.  **S3 Bucket:** um bucket S3 chamado `postech-ml-engineering-fase-2-tech-challenge-bucket` para o Data Lake, estruturado com as pastas: `bronze/`, `silver/` e `gold/`
+3.  **AWS Glue Data Catalog:**
+    *   Um banco de dados criado no Glue Catalog chamado `db_bovespa` para o mapeamento das tabelas
+4.  **Scripts de ETL:**
+    *   Os scripts PySpark dos jobs no Glue devem estar armazenados em um diretório cahamdo `scripts` localizado no bucket S3 para que o Apache Airflow possa referenciá-los
+5.  **Consultas do Athena:**
+    *   Os resultados das consultas do Athena devem ter um diretório chamado `athena-results`, configurado no bucket S3
+6.  **AWS Glue Crawlers:**
+    *   Os Crawlers responsáveis pelo mapeamento das camadas Silver e Gold devem estar previamente criados no console do AWS Glue para que o Apache Airflow possa disparar a atualização automática das tabelas no AWS Athena e metadados no AWS Glue Data Catalog.
+7.  **AWS Glue Jobs:**
+    *   Os jobs AWS Glue responsáveis pelas transformações entre as camadas medalhão devem estar previamente criados e vinculados à IAM Role de serviço e aos respectivos scripts no S3.
 
 ### Instalação
 
@@ -42,7 +65,7 @@ cd postech-ml-techchallenge-fase-2-airflow
 
 ### Como Rodar a Aplicação
 
-Para subir o ambiente completo do Airflow (Webserver, Scheduler, Postgres) via Docker:
+Para subir o ambiente completo do Apache Airflow (Webserver, Scheduler, Postgres) via Docker:
 
 1. Configure as variáveis de ambiente criando um arquivo .env na raiz do projeto e preencha conforme o conteúdo abaixo:
 
