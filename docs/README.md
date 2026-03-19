@@ -28,11 +28,11 @@ O diagrama abaixo ilustra a arquitetura do projeto:
 
 ### Pré-requisitos
 
-**EC2/Servidor Local**
+**Ambiente do Apache Airflow**
 
 Certifique-se de ter o Python 3.11 e o Docker 29.1.1 instalados em seu sistema.
 
-**AWS**
+**Infraestrutura AWS**
 
 É necessário que a conta AWS possua os seguintes recursos configurados:
 
