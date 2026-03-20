@@ -4,13 +4,13 @@ Este repositório consiste em um pipeline de dados orquestrado com Apache Airflo
 
 **Fluxo**
 
-O pipeline disponibiliza os dados em uma arquitetura medalhão em um Data Lake na AWS S3:
+O pipeline orquestrado pelo Apache Airflow disponibiliza os dados em um Data Lake com arquitetura medalhão disponível em um bucket S3:
 
-1.  **Extração (Selenium):** utiliza Selenium para realizar a navegação automatizada no portal da B3. O processo realiza o bypass de iframes e extrai a Carteira do Dia do Índice Bovespa
-2.  **Ingestão (Bronze):** os arquivos extraídos são persistidos localmente e enviados para a camada bronze do bucket S3 via Boto3 em uma rotina diária (segunda a sexta). Os dados são armazenados em seu formato original, preservando a granularidade com particionamento por data de extração
-3.  **Transformação (AWS Glue - Silver):** o Apache Airflow dispara um job no AWS Glue para limpeza, normalização de tipos, tratamento de valores nulos, conversão para Parquet e particionamento por data e categoria, otimizando drasticamente a performance de leitura e custo de armazenamento
-4.  **Transformação (AWS Glue - Gold):** um outro job de processamento transforma os dados da camada silver em tabelas analíticas disponibilizadas na camada gold
-5.  **Data Lakehouse (Athena):** o fluxo encerra com a atualização automatizada, via AWS Glue Crawler, das tabelas transformadas no AWS Athena, disponibilizando-as para consultas SQL de alta performance
+1.  **Web Scraping (Selenium):** um script web scraping é disparado para realizar a navegação automatizada no portal da B3 via Selenium e realizar o download dos dados da Carteira do Dia do Índice Bovespa
+2.  **Ingestão no S3 (Bronze):** os arquivos extraídos são persistidos localmente e enviados para a camada bronze do bucket S3. Os dados são armazenados em seu formato original, preservando a granularidade com particionamento por data de extração
+3.  **Transformação (AWS Glue - Silver):** um job no AWS Glue é disparado para limpeza, tipagem e conversão dos dados para Parquet, particionando por data e categoria, otimizando drasticamente a performance de leitura e custo de armazenamento
+4.  **Transformação (AWS Glue - Gold):** um outro job de processamento transforma os dados da camada silver em tabelas analíticas disponibilizadas na camada gold do bucket S3
+5.  **Data Lakehouse (Athena):** o fluxo encerra com a atualização automatizada via AWS Glue Crawler das tabelas transformadas no AWS Athena, disponibilizando-as para consultas SQL de alta performance
 
 ### Arquitetura
 
