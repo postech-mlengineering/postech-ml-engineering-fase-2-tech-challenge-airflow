@@ -24,7 +24,7 @@ O pipeline gerencia e disponibiliza as seguintes entidades no Glue Catalog:
 
 O diagrama abaixo ilustra a arquitetura do projeto:
 
-<br><p align='center'><img src="https://github.com/postech-mlengineering/postech-ml-engineering-fase-2-tech-challenge-airflow/blob/a90c81b4d9bd65cac41bea56dd3d67350ba9c00b/docs/img/postech_ml_engineering_fase_2_tech_challenge_arquitetura.svg" alt="Arquitetura"></p><br>
+<br><p align='center'><img src="https://github.com/postech-mlengineering/postech-ml-engineering-fase-2-tech-challenge-airflow/blob/729f6481e5ae0a5341d1006b45eaf0087feb72f2/docs/img/postech_ml_engineering_fase_2_tech_challenge_arquitetura.drawio.png" alt="Arquitetura"></p><br>
 
 ### Pré-requisitos
 
@@ -140,11 +140,9 @@ AWS_SECRET_ACCESS_KEY=<seu_secret_key_aws>
 | **Infraestrutura** | **Docker** | `29.1.1` | Ferramenta de containerização para paridade entre ambientes |
 | **Gerenciamento** | **Poetry** | `2.2.1` | Gerenciador de ambientes virtuais para isolamento de dependências |
 
-### Integrações
-
 ### Deploy
 
-O deploy foi realizado utilizando uma instância EC2 na AWS, via Docker para a padronização e o isolamento de ambiente.
+O deploy pode ser realizado via Docker para a padronização e o isolamento de ambiente.
 
 ### Link da Apresentação
 
