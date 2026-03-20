@@ -31,19 +31,19 @@ Certifique-se de ter o Python 3.11 e o Docker 29.1.1 instalados em seu sistema.
 Recursos e Serviços:
 
 *   **Amazon S3 (Data Lake):**
-    *   **Bucket Central:** `postech-ml-engineering-fase-2-tech-challenge-bucket`
-    *   **Camadas (Medalhão):**
-        *   `bronze/`: armazenamento de arquivos brutos extraídos
-        *   `silver/`: dados limpos e padronizados após o primeiro processamento
+    *   **Bucket:** `postech-ml-engineering-fase-2-tech-challenge-bucket`
+    *   **Camadas:**
+        *   `bronze/`: dados brutos
+        *   `silver/`: dados tratados
         *   `gold/`: dados agregados e prontos para consumo analítico
-    *   **Pastas de Suporte:**
+    *   **Outras pastas:**
         *   `scripts/`: repositório dos arquivos `.py` (PySpark) utilizados pelos Glue Jobs
         *   `athena-results/`: local obrigatório para armazenamento de outputs do AWS Athena
 
 *   **AWS Glue (Catálogo e ETL):**
     *   **Data Catalog:** banco de dados `db_bovespa` para gestão de metadados
     *   **Jobs PySpark:**
-        *   `job_bronze_to_silver`: transformação e limpeza inicial
+        *   `job_bronze_to_silver`: tratamento
         *   `job_silver_to_gold`: agregações
     *   **Crawlers:**
         *   `index_composition`, `asset_moving_average`, `sector_market_share`: responsáveis por atualizar automaticamente o esquema das tabelas no AWS Glue Data Catalog
