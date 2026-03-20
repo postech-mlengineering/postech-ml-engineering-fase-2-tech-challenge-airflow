@@ -35,7 +35,6 @@ with DAG(
     DEST_S3_FOLDER_PATH = "{s3_folder}/extract_date={process_date}/{file_name}"
     
     CRAWLERS= ["index_composition", "asset_moving_average", "sector_market_share"]
-    ATHENA_TABLES= ["tb_index_composition", "tb_asset_moving_average", "tb_sector_market_share"]
 
     task_1 = PythonOperator(
         task_id="web_scraping",
