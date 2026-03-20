@@ -28,7 +28,7 @@ Certifique-se de ter o Python 3.11 e o Docker 29.1.1 instalados em seu sistema.
 
 É necessário que a conta AWS possua os recursos abaixo configurados.
 
-1. Recursos e Serviços
+Recursos e Serviços:
 
 *   **Amazon S3 (Data Lake):**
     *   **Bucket Central:** `postech-ml-engineering-fase-2-tech-challenge-bucket`
@@ -51,129 +51,133 @@ Certifique-se de ter o Python 3.11 e o Docker 29.1.1 instalados em seu sistema.
 *   **Amazon Athena:**
     *   Configurado com o Workgroup `primary` e apontando o *Query Result Location* para a pasta de resultados no S3
 
-2. Políticas e Permissões (IAM)
+Políticas e Permissões (IAM):
 
 As permissões foram configuradas observando o princípio do privilégio mínimo.
 
-*   **Usuário de Orquestração (`airflow-user`):**
-    Utilizado pelo Apache Airflow para disparar o pipeline. Possui permissões restritas via **Política Inline**:
+*   **Usuário (`airflow-user`)**
+    
+    Utilizado pelo Apache Airflow para executar o pipeline.
+
     *   **S3:** acesso de escrita (`PutObject`) limitado à pasta `bronze/`
     *   **Glue Jobs:** permissão apenas para iniciar (`StartJobRun`) e monitorar os jobs específicos do projeto
     *   **Glue Crawlers:** permissão apenas para iniciar (`StartCrawler`) os crawlers listados acima
 
-<details>
-<summary>Clique para visualizar o JSON</summary>
+    <details>
+    <summary>Clique para visualizar o JSON</summary>
 
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "S3UploadPermissions",
-            "Effect": "Allow",
-            "Action": [
-                "s3:PutObject",
-                "s3:PutObjectAcl",
-                "s3:GetObject"
-            ],
-            "Resource": "arn:aws:s3:::postech-ml-engineering-fase-2-tech-challenge-bucket/bronze/*"
-        },
-        {
-            "Sid": "GlueJobControl",
-            "Effect": "Allow",
-            "Action": [
-                "glue:StartJobRun",
-                "glue:GetJobRun",
-                "glue:GetJobRuns"
-            ],
-            "Resource": [
-                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:job/job_bronze_to_silver",
-                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:job/job_silver_to_gold"
-            ]
-        },
-        {
-            "Sid": "GlueCrawlerControl",
-            "Effect": "Allow",
-            "Action": [
-                "glue:StartCrawler",
-                "glue:GetCrawler"
-            ],
-            "Resource": [
-                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:crawler/index_composition",
-                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:crawler/asset_moving_average",
-                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:crawler/sector_market_share"
-            ]
-        }
-    ]
-}
-```
-</details>
+    ```json
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "S3UploadPermissions",
+                "Effect": "Allow",
+                "Action": [
+                    "s3:PutObject",
+                    "s3:PutObjectAcl",
+                    "s3:GetObject"
+                ],
+                "Resource": "arn:aws:s3:::postech-ml-engineering-fase-2-tech-challenge-bucket/bronze/*"
+            },
+            {
+                "Sid": "GlueJobControl",
+                "Effect": "Allow",
+                "Action": [
+                    "glue:StartJobRun",
+                    "glue:GetJobRun",
+                    "glue:GetJobRuns"
+                ],
+                "Resource": [
+                    "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:job/job_bronze_to_silver",
+                    "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:job/job_silver_to_gold"
+                ]
+            },
+            {
+                "Sid": "GlueCrawlerControl",
+                "Effect": "Allow",
+                "Action": [
+                    "glue:StartCrawler",
+                    "glue:GetCrawler"
+                ],
+                "Resource": [
+                    "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:crawler/index_composition",
+                    "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:crawler/asset_moving_average",
+                    "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:crawler/sector_market_share"
+                ]
+            }
+        ]
+    }
+    ```
+    </details><br>
 
-*   **Role de Execução (`glue-role`):**
+*   **Role de Execução (`glue-role`)**
+
     Role de serviço que o AWS Glue assume para processar os dados.
+
     *   **S3 Access:** permissão de leitura e escrita em todas as camadas do bucket do projeto
     *   **CloudWatch Logs:** permissão para criar grupos de logs e gravar logs de execução (fundamental para monitoramento e debug)
     *   **Glue Catalog:** permissão para criar e alterar tabelas/partições dentro do banco de dados `db_bovespa`
     *   **Trust Relationship:** configurada para permitir que apenas o serviço `glue.amazonaws.com` assuma esta identidade
 
-<details>
-<summary>Clique para visualizar o JSON</summary>
+    <details>
+    <summary>Clique para visualizar o JSON</summary>
 
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "S3Access",
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject",
-                "s3:ListBucket"
-            ],
-            "Resource": [
-                "arn:aws:s3:::postech-ml-engineering-fase-2-tech-challenge-bucket",
-                "arn:aws:s3:::postech-ml-engineering-fase-2-tech-challenge-bucket/*"
-            ]
-        },
-        {
-            "Sid": "Logging",
-            "Effect": "Allow",
-            "Action": [
-                "logs:CreateLogGroup",
-                "logs:CreateLogStream",
-                "logs:PutLogEvents"
-            ],
-            "Resource": [
-                "arn:aws:logs:*:*:log-group:/aws-glue/*"
-            ]
-        },
-        {
-            "Sid": "GlueCatalog",
-            "Effect": "Allow",
-            "Action": [
-                "glue:GetDatabase",
-                "glue:GetTable",
-                "glue:GetTables",
-                "glue:CreateTable",
-                "glue:UpdateTable",
-                "glue:GetPartition",
-                "glue:GetPartitions",
-                "glue:BatchGetPartition",
-                "glue:BatchCreatePartition",
-                "glue:UpdatePartition"
-            ],
-            "Resource": [
-                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:catalog",
-                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:database/db_bovespa",
-                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:table/db_bovespa/*"
-            ]
-        }
-    ]
-}
-```
-</details>
+    ```json
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "S3Access",
+                "Effect": "Allow",
+                "Action": [
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:DeleteObject",
+                    "s3:ListBucket"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::postech-ml-engineering-fase-2-tech-challenge-bucket",
+                    "arn:aws:s3:::postech-ml-engineering-fase-2-tech-challenge-bucket/*"
+                ]
+            },
+            {
+                "Sid": "Logging",
+                "Effect": "Allow",
+                "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                ],
+                "Resource": [
+                    "arn:aws:logs:*:*:log-group:/aws-glue/*"
+                ]
+            },
+            {
+                "Sid": "GlueCatalog",
+                "Effect": "Allow",
+                "Action": [
+                    "glue:GetDatabase",
+                    "glue:GetTable",
+                    "glue:GetTables",
+                    "glue:CreateTable",
+                    "glue:UpdateTable",
+                    "glue:GetPartition",
+                    "glue:GetPartitions",
+                    "glue:BatchGetPartition",
+                    "glue:BatchCreatePartition",
+                    "glue:UpdatePartition"
+                ],
+                "Resource": [
+                    "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:catalog",
+                    "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:database/db_bovespa",
+                    "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:table/db_bovespa/*"
+                ]
+            }
+        ]
+    }
+    ```
+    </details>
 
 ### Instalação
 
