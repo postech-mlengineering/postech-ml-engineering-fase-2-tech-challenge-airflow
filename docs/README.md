@@ -1,6 +1,6 @@
 # Repositório do Airflow para o Tech Challenge da Fase 2 da Pós-Graduação em Machine Learning Engineering da FIAP
 
-Este repositório consiste em um pipeline de dados orquestrado com Apache Airflow via Docker, desenvolvido para automatizar a ingestão e processamento de dados do Índice Bovespa. A solução integra técnicas de web scraping com serviços da AWS para transformar dados disponibilizados pela B3 em ativos analíticos prontos para consumo em um Data Lakehouse
+Este repositório consiste em um pipeline de dados orquestrado com Apache Airflow via Docker, desenvolvido para automatizar a ingestão e processamento de dados do Índice Bovespa. A solução integra técnicas de web scraping com serviços da AWS para transformar dados disponibilizados pela B3 em ativos analíticos prontos para consumo em um Data Lakehouse.
 
 **Fluxo**
 
@@ -9,16 +9,8 @@ O pipeline disponibiliza os dados em uma arquitetura medalhão em um Data Lake n
 1.  **Extração (Selenium):** utiliza Selenium para realizar a navegação automatizada no portal da B3. O processo realiza o bypass de iframes e extrai a Carteira do Dia do Índice Bovespa
 2.  **Ingestão (Bronze):** os arquivos extraídos são persistidos localmente e enviados para a camada bronze do bucket S3 via Boto3 em uma rotina diária (segunda a sexta). Os dados são armazenados em seu formato original, preservando a granularidade com particionamento por data de extração
 3.  **Transformação (AWS Glue - Silver):** o Apache Airflow dispara um job no AWS Glue para limpeza, normalização de tipos, tratamento de valores nulos, conversão para Parquet e particionamento por data e categoria, otimizando drasticamente a performance de leitura e custo de armazenamento
-4.  **Transformação (AWS Glue - Gold Layer):** um outro job de processamento transforma os dados da camada silver em tabelas analíticas disponibilizadas na camada gold
+4.  **Transformação (AWS Glue - Gold):** um outro job de processamento transforma os dados da camada silver em tabelas analíticas disponibilizadas na camada gold
 5.  **Data Lakehouse (Athena):** o fluxo encerra com a atualização automatizada, via AWS Glue Crawler, das tabelas transformadas no AWS Athena, disponibilizando-as para consultas SQL de alta performance
-
-**Dados**
-
-O pipeline gerencia e disponibiliza as seguintes entidades no Glue Catalog:
-
-*   **tb_index_composition**: detalhamento da carteira do dia
-*   **tb_asset_moving_average**: cálculo de médias móveis dos ativos que compõem o índice
-*   **tb_sector_market_share**: visão consolidada da relevância e peso de cada setor econômico dentro do Índice Bovespa
 
 ### Arquitetura
 
@@ -34,54 +26,154 @@ Certifique-se de ter o Python 3.11 e o Docker 29.1.1 instalados em seu sistema.
 
 **Infraestrutura AWS**
 
-É necessário que a conta AWS possua os seguintes recursos configurados:
+É necessário que a conta AWS possua os recursos abaixo configurados.
 
-1. Amazon S3 (Data Lake e Armazenamento)
+1. Recursos e Serviços
 
-Toda a estrutura de arquivos e diretórios será centralizada no bucket: `postech-ml-engineering-fase-2-tech-challenge-bucket`.
+*   **Amazon S3 (Data Lake):**
+    *   **Bucket Central:** `postech-ml-engineering-fase-2-tech-challenge-bucket`
+    *   **Camadas (Medalhão):**
+        *   `bronze/`: armazenamento de arquivos brutos extraídos
+        *   `silver/`: dados limpos e padronizados após o primeiro processamento
+        *   `gold/`: dados agregados e prontos para consumo analítico
+    *   **Pastas de Suporte:**
+        *   `scripts/`: repositório dos arquivos `.py` (PySpark) utilizados pelos Glue Jobs
+        *   `athena-results/`: local obrigatório para armazenamento de outputs do AWS Athena
 
-*   **Estrutura de Pastas do Data Lake (Medalhão):**
-    *   `bronze/`: dados brutos
-    *   `silver/`: dados limpos
-    *   `gold/`: dados agregados e prontos para consumo/análise
-*   **Armazenamento de Scripts (Glue):**
-    *   `scripts/`: diretório destinado aos scripts PySpark que serão executados pelos Glue Jobs
-*   **Resultados de Consultas (Athena):**
-    *   `athena-results/`: diretório configurado como *Query Result Location* para armazenar os logs e resultados de consultas do Amazon Athena
+*   **AWS Glue (Catálogo e ETL):**
+    *   **Data Catalog:** banco de dados `db_bovespa` para gestão de metadados
+    *   **Jobs PySpark:**
+        *   `job_bronze_to_silver`: transformação e limpeza inicial
+        *   `job_silver_to_gold`: agregações
+    *   **Crawlers:**
+        *   `index_composition`, `asset_moving_average`, `sector_market_share`: responsáveis por atualizar automaticamente o esquema das tabelas no AWS Glue Data Catalog
 
-2. AWS IAM (Identidade e Acessos)
+*   **Amazon Athena:**
+    *   Configurado com o Workgroup `primary` e apontando o *Query Result Location* para a pasta de resultados no S3
 
-Configuração do usuário e das permissões necessárias para que o Apache Airflow interaja com a AWS e os serviços AWS interajam entre si.
+2. Políticas e Permissões (IAM)
 
-*   **IAM User:** usuário específico (ex: `airflow-user`) cujas credenciais serão usadas no Apache Airflow com as seguintes políticas:
-    *   Políticas Gerenciadas:
-        *   `AmazonS3FullAccess`: Acesso total para leitura e escrita no bucket.
-        *   `AWSGlueServiceRole`: Permissões necessárias para operações de serviço do Glue
-    *   Políticas Customizadas:
-        *   `glue-role-full`: Permissões totais para criação, exclusão e execução de componentes do AWS Glue
-        *   `athena-role-full`: Permissões totais para execução de queries e gerenciamento do AWS Athena
-    
-*   **IAM Role:** 
-    *  `glue-service-role`: política necessária para o usuário airflow informe a role de serviço para o AWS Glue durante a orquestração.
+As permissões foram configuradas observando o princípio do privilégio mínimo.
 
-3. AWS Glue (ETL e Catálogo)
+*   **Usuário de Orquestração (`airflow-user`):**
+    Utilizado pelo Apache Airflow para disparar o pipeline. Possui permissões restritas via **Política Inline**:
+    *   **S3:** acesso de escrita (`PutObject`) limitado à pasta `bronze/`
+    *   **Glue Jobs:** permissão apenas para iniciar (`StartJobRun`) e monitorar os jobs específicos do projeto
+    *   **Glue Crawlers:** permissão apenas para iniciar (`StartCrawler`) os crawlers listados acima
 
-Componentes de processamento e organização de metadados.
+<details>
+<summary>Clique para visualizar o JSON</summary>
 
-*   **AWS Glue Data Catalog:**
-    *   Banco de dados: `db_bovespa` (para mapeamento das tabelas das camadas silver e gold)
-*   **AWS Glue Jobs:**
-    *   Jobs PySpark previamente criados para realizar as transformações entre as camadas, devendo estar vinculados à IAM Role de serviço e apontando para os scripts na pasta `s3://.../scripts/`
-*   **AWS Glue Crawlers:**
-    *   Crawlers configurados para as camadas **Silver** e **Gold** para atualização automática do esquema das tabelas e metadados no AWS Glue Data Catalog
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "S3UploadPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl",
+                "s3:GetObject"
+            ],
+            "Resource": "arn:aws:s3:::postech-ml-engineering-fase-2-tech-challenge-bucket/bronze/*"
+        },
+        {
+            "Sid": "GlueJobControl",
+            "Effect": "Allow",
+            "Action": [
+                "glue:StartJobRun",
+                "glue:GetJobRun",
+                "glue:GetJobRuns"
+            ],
+            "Resource": [
+                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:job/job_bronze_to_silver",
+                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:job/job_silver_to_gold"
+            ]
+        },
+        {
+            "Sid": "GlueCrawlerControl",
+            "Effect": "Allow",
+            "Action": [
+                "glue:StartCrawler",
+                "glue:GetCrawler"
+            ],
+            "Resource": [
+                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:crawler/index_composition",
+                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:crawler/asset_moving_average",
+                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:crawler/sector_market_share"
+            ]
+        }
+    ]
+}
+```
+</details>
 
-4. Amazon Athena
+*   **Role de Execução (`glue-role`):**
+    Role de serviço que o AWS Glue assume para processar os dados.
+    *   **S3 Access:** permissão de leitura e escrita em todas as camadas do bucket do projeto
+    *   **CloudWatch Logs:** permissão para criar grupos de logs e gravar logs de execução (fundamental para monitoramento e debug)
+    *   **Glue Catalog:** permissão para criar e alterar tabelas/partições dentro do banco de dados `db_bovespa`
+    *   **Trust Relationship:** configurada para permitir que apenas o serviço `glue.amazonaws.com` assuma esta identidade
 
-Configuração para consumo de dados via SQL.
+<details>
+<summary>Clique para visualizar o JSON</summary>
 
-*   **Athena Workgroup:** utilização de um workgroup ativo (ex: `primary`) para o gerenciamento das execuções de queries.
-*   **Configuração de Saída:** definir o caminho `s3://postech-ml-engineering-fase-2-tech-challenge-bucket/athena-results/` como o local padrão de saída para evitar erros de permissão durante a execução de queries via Apache Airflow
-
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "S3Access",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::postech-ml-engineering-fase-2-tech-challenge-bucket",
+                "arn:aws:s3:::postech-ml-engineering-fase-2-tech-challenge-bucket/*"
+            ]
+        },
+        {
+            "Sid": "Logging",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": [
+                "arn:aws:logs:*:*:log-group:/aws-glue/*"
+            ]
+        },
+        {
+            "Sid": "GlueCatalog",
+            "Effect": "Allow",
+            "Action": [
+                "glue:GetDatabase",
+                "glue:GetTable",
+                "glue:GetTables",
+                "glue:CreateTable",
+                "glue:UpdateTable",
+                "glue:GetPartition",
+                "glue:GetPartitions",
+                "glue:BatchGetPartition",
+                "glue:BatchCreatePartition",
+                "glue:UpdatePartition"
+            ],
+            "Resource": [
+                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:catalog",
+                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:database/db_bovespa",
+                "arn:aws:glue:us-east-1:<id_da_sua_conta_aws>:table/db_bovespa/*"
+            ]
+        }
+    ]
+}
+```
+</details>
 
 ### Instalação
 
