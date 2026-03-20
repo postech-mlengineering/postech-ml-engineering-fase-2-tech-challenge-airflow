@@ -24,7 +24,7 @@ O pipeline gerencia e disponibiliza as seguintes entidades no Glue Catalog:
 
 O diagrama abaixo ilustra a arquitetura do projeto:
 
-<br><p align='center'><img src='' alt='Arquitetura'></p>
+<br><p align='center'><img src='./image/fluxo.png' alt='Arquitetura'></p>
 
 ### Pré-requisitos
 
