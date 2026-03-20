@@ -24,7 +24,7 @@ O pipeline gerencia e disponibiliza as seguintes entidades no Glue Catalog:
 
 O diagrama abaixo ilustra a arquitetura do projeto:
 
-<br><p align='center'><img src="./images/fluxo.png" alt="Arquitetura"></p>
+<br><p align='center'><img src="https://github.com/postech-mlengineering/postech-ml-engineering-fase-2-tech-challenge-airflow/blob/a90c81b4d9bd65cac41bea56dd3d67350ba9c00b/docs/img/postech_ml_engineering_fase_2_tech_challenge_arquitetura.svg" alt="Arquitetura"></p><br>
 
 ### Pré-requisitos
 
