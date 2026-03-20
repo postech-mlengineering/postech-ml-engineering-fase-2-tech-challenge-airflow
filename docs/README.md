@@ -109,7 +109,7 @@ As permissões foram configuradas observando o princípio do privilégio mínimo
         ]
     }
     ```
-    </details><br>
+    </details>
 
 *   **Role de Execução (`glue-role`)**
 
