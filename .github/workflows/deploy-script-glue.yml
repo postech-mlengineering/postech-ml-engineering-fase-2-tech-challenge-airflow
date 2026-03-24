@@ -1,4 +1,4 @@
-# .github/workflows/deploy-s3.yml
+#.github/workflows/deploy-s3.yml
 name: Deploy to S3
 
 on:
@@ -7,12 +7,14 @@ on:
       - main
     paths:
       - 'dags/scripts/job_bronze_to_silver.py'
+      - 'dags/scripts/job_silver_to_gold.py'
   pull_request:
     branches:
       - main
     paths:
       - 'dags/scripts/job_bronze_to_silver.py'
-  workflow_dispatch:  # Rodar manualmente
+      - 'dags/scripts/job_silver_to_gold.py'
+  workflow_dispatch: #rodar manualmente
   
 jobs:
   deploy:
@@ -32,3 +34,4 @@ jobs:
       - name: Upload para S3
         run: |
           aws s3 cp ./dags/scripts/job_bronze_to_silver.py s3://${{ secrets.S3_BUCKET }}/scripts/job_bronze_to_silver.py
+          aws s3 cp ./dags/scripts/job_silver_to_gold.py s3://${{ secrets.S3_BUCKET }}/scripts/job_silver_to_gold.py
