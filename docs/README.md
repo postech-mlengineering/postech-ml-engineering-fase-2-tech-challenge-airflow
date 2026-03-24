@@ -206,9 +206,7 @@ _AIRFLOW_WWW_USER_PASSWORD=<senha_de_sua_escolha>
 
 2. Inicie a aplicação:
 
-```bashAWS_ACCESS_KEY_ID=<seu_access_key_id_aws>
-AWS_SECRET_ACCESS_KEY=<seu_secret_key_aws>
-AWS_REGION=<sua_regiao_aws>
+```bash
 docker-compose up --build -d
 ```
 
