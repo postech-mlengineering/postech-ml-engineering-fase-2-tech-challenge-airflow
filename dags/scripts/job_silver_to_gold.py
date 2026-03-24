@@ -33,7 +33,7 @@ df_sector = df.groupBy("process_date", "sector") \
     .withColumn("market_share", f.col("quantity") / f.sum("quantity").over(window_date))
 
 #cod
-window_ma = Window.partitionBy("ticker").orderBy("process_date").rowsBetween(-2, 0)
+window_ma = Window.partitionBy("ticker").orderBy("process_date").rowsBetween(-4, 0)
 df_ticker = df.withColumn(
     "weight_moving_average", 
     f.avg("weight").over(window_ma)
