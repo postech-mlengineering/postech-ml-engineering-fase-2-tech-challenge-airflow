@@ -234,7 +234,7 @@ AWS_SECRET_ACCESS_KEY=<seu_secret_key_aws>
 | **Web Scraping** | **Selenium** | `4.41.0` | Framework para web scraping |
 | **Automação** | **Webdriver Manager**| `4.0.2` | Biblioteca para gerenciamento automatizado de drivers do Chrome |
 | **Infraestrutura** | **Docker** | `29.1.1` | Ferramenta de containerização para paridade entre ambientes |
-| **Gerenciamento** | **Poetry** | `2.2.1` | Gerenciador de ambientes virtuais para isolamento de dependências |
+| **Gerenciamento** | **Venv** | `3.11` | Gerenciador de ambientes virtuais para isolamento de dependências |
 
 ### Deploy
 
