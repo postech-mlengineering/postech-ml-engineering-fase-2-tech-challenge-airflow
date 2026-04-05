@@ -240,7 +240,7 @@ O deploy pode ser realizado via Docker para a padronização e o isolamento de a
 
 ### Link da Apresentação
 
-https://www.youtube.com/watch?v=RIE_R2Y
+https://youtu.be/f9UDzWIVHyE?feature=shared
 
 ### Colaboradores
 
